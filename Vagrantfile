@@ -2,59 +2,44 @@ Vagrant.configure("2") do |config|
   config.hostmanager.enabled = true
   config.hostmanager.manage_host = true
 
-  ## DB VM 
-  config.vm.define "db01" do |db01|
-    db01.vm.box = "eurolinux-vagrant/centos-stream-9"
-    db01.vm.hostname = "db01"
-    db01.vm.network "private_network", ip: "192.168.56.15"
-    db01.vm.provider "virtualbox" do |vb|
-      vb.memory = "2048"
-    end
+  # Function to configure clients for NRPE and monitoring
+  def configure_client(config, name, ip, memory, script_path)
+    config.vm.define name do |client|
+      client.vm.box = "eurolinux-vagrant/centos-stream-9"
+      client.vm.hostname = name
+      client.vm.network "private_network", ip: ip
+      client.vm.provider "virtualbox" do |vb|
+        vb.memory = memory
+      end
 
-    # Provisioning with setup_mariadb.sh script
-    db01.vm.provision "shell", path: "mariadb.sh", privileged: true
+      # Install and configure NRPE
+      client.vm.provision "shell", path: script_path, privileged: true
+      client.vm.provision "shell", inline: <<-SHELL
+        sudo yum install -y epel-release
+        sudo yum update -y
+        sudo yum install -y nrpe nagios-plugins-all --skip-broken
+        echo "allowed_hosts=127.0.0.1,192.168.56.10" >> /etc/nagios/nrpe.cfg
+        sudo systemctl enable nrpe && sudo systemctl start nrpe
+        systemctl start firewalld.service
+        firewall-cmd --add-port=5666/tcp --permanent
+        firewall-cmd --reload
+      SHELL
+    end
   end
 
-  # Memcache VM
-  config.vm.define "mc01" do |mc01|
-    mc01.vm.box = "eurolinux-vagrant/centos-stream-9"
-    mc01.vm.hostname = "mc01"
-    mc01.vm.network "private_network", ip: "192.168.56.14"
-    mc01.vm.provider "virtualbox" do |vb|
-      vb.memory = "900"
-    end
+  ## DB VM
+  configure_client(config, "db01", "192.168.56.15", 2048, "mariadb.sh")
 
-    # Provisioning with setup_memcached.sh script
-    mc01.vm.provision "shell", path: "memcached.sh", privileged: true
-  end
+  ## Memcache VM
+  configure_client(config, "mc01", "192.168.56.14", 900, "memcached.sh")
 
-  # RabbitMQ VM
-  config.vm.define "rmq01" do |rmq01|
-    rmq01.vm.box = "eurolinux-vagrant/centos-stream-9"
-    rmq01.vm.hostname = "rmq01"
-    rmq01.vm.network "private_network", ip: "192.168.56.13"
-    rmq01.vm.provider "virtualbox" do |vb|
-      vb.memory = "600"
-    end
+  ## RabbitMQ VM
+  configure_client(config, "rmq01", "192.168.56.13", 600, "rabbitmq.sh")
 
-    # Provisioning with setup_rabbitmq.sh script
-    rmq01.vm.provision "shell", path: "rabbitmq.sh", privileged: true
-  end
+  ## Tomcat VM
+  configure_client(config, "app01", "192.168.56.12", 4200, "tomcat.sh")
 
-  # Tomcat VM
-  config.vm.define "app01" do |app01|
-    app01.vm.box = "eurolinux-vagrant/centos-stream-9"
-    app01.vm.hostname = "app01"
-    app01.vm.network "private_network", ip: "192.168.56.12"
-    app01.vm.provider "virtualbox" do |vb|
-      vb.memory = "4200"
-    end
-
-    # Provisioning with setup_tomcat.sh script
-    app01.vm.provision "shell", path: "tomcat.sh", privileged: true
-  end
-
-  # Nginx VM
+  ## Nginx VM
   config.vm.define "web01" do |web01|
     web01.vm.box = "ubuntu/jammy64"
     web01.vm.hostname = "web01"
@@ -64,7 +49,27 @@ Vagrant.configure("2") do |config|
       vb.memory = "800"
     end
 
-    # Provisioning with setup_nginx.sh script
+    # Provision services and NRPE
     web01.vm.provision "shell", path: "nginx.sh", privileged: true
+    web01.vm.provision "shell", inline: <<-SHELL
+      apt update
+      apt install -y nagios-nrpe-server nagios-plugins
+      echo "allowed_hosts=127.0.0.1,192.168.56.10" >> /etc/nagios/nrpe.cfg
+      systemctl enable nagios-nrpe-server && systemctl start nagios-nrpe-server
+      ufw allow 5666
+    SHELL
+  end
+
+  # Nagios VM
+  config.vm.define "nagios" do |nagios|
+    nagios.vm.box = "eurolinux-vagrant/centos-stream-9"
+    nagios.vm.hostname = "nagios"
+    nagios.vm.network "private_network", ip: "192.168.56.10"
+    nagios.vm.provider "virtualbox" do |vb|
+      vb.memory = "1024"
+    end
+
+    # Use external shell script for provisioning
+    nagios.vm.provision "shell", path: "nagios.sh"
   end
 end
