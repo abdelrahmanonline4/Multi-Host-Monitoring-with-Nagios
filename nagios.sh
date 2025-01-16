@@ -1,10 +1,6 @@
 #!/bin/bash
 
-# Elevate privileges
-if [ "$EUID" -ne 0 ]; then
-    echo "Please run as root"
-    exit 1
-fi
+sudo -i
 
 # Install prerequisites and update system
 yum install -y epel-release
@@ -55,11 +51,88 @@ define host {
 }
 EOL
 
+# Add service definitions
+cat <<EOL >> /etc/nagios/objects/services.cfg
+define service{
+    use                     generic-service
+    host_name               db01
+    service_description     Ping Check
+    check_command           check_ping!100.0,20%!500.0,60%
+    max_check_attempts      4
+    check_interval          5
+    retry_interval          1
+    check_period            24x7
+    notification_interval   30
+    notification_period     24x7
+}
 
-echo "cfg_file=/etc/nagios/objects/clients.cfg" >> /etc/nagios/nagios.cfg
+define service{
+    use                     generic-service
+    host_name               mc01
+    service_description     Ping Check
+    check_command           check_ping!100.0,20%!500.0,60%
+    max_check_attempts      4
+    check_interval          5
+    retry_interval          1
+    check_period            24x7
+    notification_interval   30
+    notification_period     24x7
+}
+
+define service{
+    use                     generic-service
+    host_name               rmq01
+    service_description     Ping Check
+    check_command           check_ping!100.0,20%!500.0,60%
+    max_check_attempts      4
+    check_interval          5
+    retry_interval          1
+    check_period            24x7
+    notification_interval   30
+    notification_period     24x7
+}
+
+define service{
+    use                     generic-service
+    host_name               app01
+    service_description     Ping Check
+    check_command           check_ping!100.0,20%!500.0,60%
+    max_check_attempts      4
+    check_interval          5
+    retry_interval          1
+    check_period            24x7
+    notification_interval   30
+    notification_period     24x7
+}
+
+define service{
+    use                     generic-service
+    host_name               web01
+    service_description     Ping Check
+    check_command           check_ping!100.0,20%!500.0,60%
+    max_check_attempts      4
+    check_interval          5
+    retry_interval          1
+    check_period            24x7
+    notification_interval   30
+    notification_period     24x7
+}
+EOL
+
+# Add NRPE command definition
+cat <<EOL >> /etc/nagios/objects/commands.cfg
+define command {
+    command_name    check_nrpe
+    command_line    \$USER1\$/check_nrpe -H \$HOSTADDRESS\$ -c \$ARG1\$
+}
+EOL
+
+# Update Nagios configuration
+sed -i '/cfg_file=\/etc\/nagios\/objects\/services.cfg/d' /etc/nagios/nagios.cfg
+echo "cfg_file=/etc/nagios/objects/services.cfg" >> /etc/nagios/nagios.cfg
 
 # Restart Nagios to apply changes
 systemctl restart nagios
 
 # Confirmation message
-echo "Nagios installation and configuration complete."
+echo "Nagios services and commands configuration updated successfully."
