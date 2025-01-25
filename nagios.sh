@@ -128,8 +128,8 @@ define command {
 EOL
 
 # Update Nagios configuration
-sed -i '/cfg_file=\/etc\/nagios\/objects\/services.cfg/d' /etc/nagios/nagios.cfg
 echo "cfg_file=/etc/nagios/objects/services.cfg" >> /etc/nagios/nagios.cfg
+echo "cfg_file=/etc/nagios/objects/clients.cfg" >> /etc/nagios/nagios.cfg
 
 # Restart Nagios to apply changes
 systemctl restart nagios
