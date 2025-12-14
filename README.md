@@ -3,9 +3,11 @@
 ![image](https://github.com/user-attachments/assets/0211eb3e-435f-469e-966e-b12f0101f8c8)
 
 
-![image](https://github.com/user-attachments/assets/0484224c-dc99-4f62-b5a1-794159069906)
+<img width="1920" height="928" alt="image" src="https://github.com/user-attachments/assets/576382af-4673-4cec-b683-7ac85732301d" />
 
-![image](https://github.com/user-attachments/assets/85241dfa-2dbb-448e-a8b8-52c8ed1da8c7)
+
+<img width="1920" height="928" alt="image" src="https://github.com/user-attachments/assets/679e9319-828e-4126-9e2b-b323031b73b8" />
+
 
 # App
 
